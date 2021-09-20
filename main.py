@@ -5,12 +5,34 @@ import chess.svg
 import base64
 import os
 import time
+import sys
 
-from state import State
+from chessboard import ChessBoard
 from flask import Flask, Response, request
 
 app = Flask(__name__)
-s = State()
+s = ChessBoard()
+
+isAlphaBeta = sys.argv[1]
+INF = 1000000000
+whitePieces = \
+    {
+        'P': 10
+        , 'B': 30
+        , 'N': 30
+        , 'R': 50
+        , 'Q': 90
+        , 'K': 900
+    }
+blackPieces = \
+    {
+        'p': -10
+        , 'b': -30
+        , 'n': -30
+        , 'r': -50
+        , 'q': -90
+        , 'k': -900
+    }
 
 
 def to_svg(state_to_svg):
@@ -64,11 +86,102 @@ def new_game():
     return response
 
 
+def minimax_eval():
+    eval_sum = 0
+    for pos in chess.SQUARES:
+        piece = s.board.piece_at(pos)
+
+        if piece is not None:
+            if piece.symbol() in whitePieces:
+                eval_sum = eval_sum + whitePieces.get(piece.symbol())
+            elif piece.symbol() in blackPieces:
+                eval_sum = eval_sum + blackPieces.get(piece.symbol())
+    return eval_sum
+
+
+def minimax(depth, isMaximizingPlayer):
+    if depth == 0 or s.board.is_game_over():
+        return minimax_eval(), chess.Move.null()
+
+    nextMove = chess.Move.null()
+    if isMaximizingPlayer:
+        maxEval = -INF
+        for move in s.board.legal_moves:
+            s.board.push(move)
+            eval_sum, retMove = minimax(depth - 1, False)
+            s.board.pop()
+            maxEval = max(maxEval, eval_sum)
+            if maxEval == eval_sum:
+                nextMove = retMove
+        return maxEval, nextMove
+    else:
+        minEval = INF
+        for move in s.board.legal_moves:
+            s.board.push(move)
+            eval_sum, retMove = minimax(depth - 1, True)
+            s.board.pop()
+            minEval = min(minEval, eval_sum)
+            if minEval == eval_sum:
+                nextMove = retMove
+        return minEval, nextMove
+
+
+def minimax_ab(depth, alpha, beta, isMaximizingPlayer):
+    if depth == 0 or s.board.is_game_over():
+        return minimax_eval(), s.board.peek()
+
+    nextMove = chess.Move.null()
+    if isMaximizingPlayer:
+        maxEval = -INF
+        for move in s.board.legal_moves:
+            s.board.push(move)
+            eval_sum, retMove = minimax_ab(depth - 1, alpha, beta, False)
+            retMove = s.board.pop()
+            maxEval = max(maxEval, eval_sum)
+            if maxEval == eval_sum:
+                nextMove = retMove
+            alpha = max(alpha, eval_sum)
+            if beta <= alpha:
+                break
+        return maxEval, nextMove
+    else:
+        minEval = INF
+        for move in s.board.legal_moves:
+            s.board.push(move)
+            eval_sum, retMove = minimax_ab(depth - 1, alpha, beta, True)
+            retMove = s.board.pop()
+            minEval = min(minEval, eval_sum)
+            if minEval == eval_sum:
+                nextMove = retMove
+            beta = min(beta, eval_sum)
+            if beta <= alpha:
+                break
+        return minEval, nextMove
+
+
 # Write for Minimax algorithm
 def computer_move():
-    for mv in s.board.legal_moves:
-        s.board.push(mv)
-        break
+    if isAlphaBeta:
+        st = time.time()
+        try:
+            score, move = minimax_ab(3, -INF, INF, False)
+            print(f"-->{move}")
+            s.board.push(move)
+        except:
+            traceback.print_exc()
+        en = time.time()
+        diff = round((en - st) * 1000)  # Milliseconds
+    else:
+        st = time.time()
+        try:
+            score, move = minimax(3, False)
+            print(f"-->{move}")
+            s.board.push(move)
+        except:
+            traceback.print_exc()
+        en = time.time()
+        diff = round((en - st) * 1000)  # Milliseconds
+    print(f"Diff : {diff}")
 
 
 if __name__ == '__main__':

@@ -1,7 +1,7 @@
 import chess
 
 
-class State(object):
+class ChessBoard(object):
     def __init__(self):
         self.board = chess.Board()
 
@@ -13,4 +13,4 @@ class State(object):
 
 
 if __name__ == "__main__":
-    s = State()
+    s = ChessBoard()
