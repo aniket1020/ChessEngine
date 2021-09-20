@@ -13,7 +13,18 @@ from flask import Flask, Response, request
 app = Flask(__name__)
 s = ChessBoard()
 
-isAlphaBeta = sys.argv[1]
+if len(sys.argv) == 2:
+    isAlphaBeta = sys.argv[1]
+    if isAlphaBeta == '--minmaxab':
+        print("Running Minimax with Alpha-beta")
+        isAlphaBeta = True
+    else:
+        isAlphaBeta = False
+        print("Running Minimax")
+else:
+    isAlphaBeta = False
+    print("Running Minimax")
+
 INF = 1000000000
 whitePieces = \
     {
