@@ -120,7 +120,7 @@ def minimax(depth, isMaximizingPlayer):
         for move in s.board.legal_moves:
             s.board.push(move)
             eval_sum, retMove = minimax(depth - 1, False)
-            s.board.pop()
+            retMove = s.board.pop()
             maxEval = max(maxEval, eval_sum)
             if maxEval == eval_sum:
                 nextMove = retMove
@@ -130,7 +130,7 @@ def minimax(depth, isMaximizingPlayer):
         for move in s.board.legal_moves:
             s.board.push(move)
             eval_sum, retMove = minimax(depth - 1, True)
-            s.board.pop()
+            retMove = s.board.pop()
             minEval = min(minEval, eval_sum)
             if minEval == eval_sum:
                 nextMove = retMove
