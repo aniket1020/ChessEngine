@@ -46,6 +46,9 @@ blackPieces = \
     }
 
 
+fTime = open("time.txt", "w")
+
+
 def to_svg(state_to_svg):
     return base64.b64encode(chess.svg.board(board=state_to_svg.board).encode('utf-8')).decode('utf-8')
 
@@ -192,7 +195,7 @@ def computer_move():
             traceback.print_exc()
         en = time.time()
         diff = round((en - st) * 1000)  # Milliseconds
-    print(f"Diff : {diff}")
+    fTime.write(f"Diff : {diff} ms\n")
 
 
 if __name__ == '__main__':
