@@ -46,7 +46,7 @@ blackPieces = \
     }
 
 
-fTime = open("time.txt", "w")
+fTime = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'time.txt'), "w")
 
 
 def to_svg(state_to_svg):
