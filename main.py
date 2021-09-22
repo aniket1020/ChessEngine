@@ -90,6 +90,10 @@ def player_move():
     return response
 
 
+@app.route('/sunfish/<int:num>')
+def sunfish(num):
+    print(num)
+
 @app.route("/new_game")
 def new_game():
     s.board.reset()
