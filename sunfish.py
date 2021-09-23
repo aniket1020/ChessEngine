@@ -403,7 +403,7 @@ def print_pos(pos):
 
 
 def main():
-    hist = [Position(initial, 0, (True,True), (True,True), 0, 0)]
+    hist = [Position(initial, 0, (True, True), (True, True), 0, 0)]
     searcher = Searcher()
     while True:
         # Fire up the engine to look for a move.
@@ -412,22 +412,22 @@ def main():
             if time.time() - start > 1:
                 break
 
-        if score == MATE_UPPER:
-            print("Checkmate!")
+        # if score == MATE_UPPER:
+        #     print("checkmate")
 
-        print("My move:", render(119 - move[0]) + render(119 - move[1]))
+        print(render(119 - move[0]) + render(119 - move[1]))
         hist.append(hist[-1].move(move))
 
         # print_pos(hist[-1])
 
-        if hist[-1].score <= -MATE_LOWER:
-            print("You lost")
-            break
+        # if hist[-1].score <= -MATE_LOWER:
+        #     # print("sunfish\n")
+        #     break
 
         # We query the user until she enters a (pseudo) legal move.
         move = None
         while move not in hist[-1].gen_moves():
-            match = re.match('([a-h][1-8])'*2, input('Your move: '))
+            match = re.match('([a-h][1-8])'*2, input())
             if match:
                 move = parse(match.group(1)), parse(match.group(2))
             else:
@@ -439,9 +439,9 @@ def main():
         # This allows us to see the effect of our move.
         # print_pos(hist[-1].rotate())
 
-        if hist[-1].score <= -MATE_LOWER:
-            print("You won")
-            break
+        # if hist[-1].score <= -MATE_LOWER:
+        #     # print("minmax\n")
+        #     break
 
         # # Fire up the engine to look for a move.
         # start = time.time()
