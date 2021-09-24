@@ -286,6 +286,7 @@ def minimax_ab(depth, alpha, beta, isMaximizingPlayer):
 
 # Write for Minimax algorithm
 def computer_move():
+    diff = 0
     if isAlphaBeta:
         st = time.time()
         try:
