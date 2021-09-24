@@ -178,27 +178,26 @@ def sunfish(num):
         except Exception as err:
             print(f"{err}")
 
-    res = s.board.result()
-    print(res)
-    print(s.board.fen())
+        res = s.board.result()
+        print(res)
+        print(s.board.fen())
 
-    if res == '1-0':
-        player_sunfish = player_sunfish+1
-    elif res == '0-1':
-        player_minmax = player_minmax+1
-    elif res == '1/2-1/2':
-        player_sunfish = player_sunfish + 1
-        player_minmax = player_minmax + 1
+        if res == '1-0':
+            player_sunfish = player_sunfish+1
+        elif res == '0-1':
+            player_minmax = player_minmax+1
+        elif res == '1/2-1/2':
+            player_sunfish = player_sunfish + 1
+            player_minmax = player_minmax + 1
+
+        s.board.reset()
+        s.board = s.board.mirror()
+        print(s.board.fen())
 
     response = app.response_class(
-        response=s.board.fen(),
+        response=f"Wins\nSunfish - {player_sunfish} \nMinmax - {player_minmax}",
         status=200
     )
-
-    s.board.reset()
-    print(s.board.fen())
-    s.board = s.board.mirror()
-
     return response
 
 
