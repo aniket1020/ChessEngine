@@ -1,3 +1,4 @@
+import random
 import traceback
 
 import chess
@@ -6,13 +7,17 @@ import base64
 import os
 import time
 import sys
+from stockfish import Stockfish
 
 from chessboard import ChessBoard
-from flask import Flask, Response, request
+from flask import Flask, request
 from subprocess import Popen, PIPE, STDOUT
 
 app = Flask(__name__)
 s = ChessBoard()
+
+ELO_RATING = 2000
+MIN_MAX_DEPTH = 3
 
 if len(sys.argv) == 2:
     isAlphaBeta = sys.argv[1]
@@ -46,6 +51,9 @@ blackPieces = \
         , 'k': -900
     }
 
+randMoves = ['a2a3', 'a2a4', 'b2b3', 'b2b4', 'c2c3', 'c2c4', 'd2d3', 'd2d4', 'e2e3', 'e2e4', 'f2f3', 'f2f4', 'g2g3',
+             'g2g4', 'h2h3', 'h2h4', 'g1f3', 'g1h3', 'b1a3', 'b1c3']
+
 fTime = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'time.txt'), "w")
 
 
@@ -59,6 +67,10 @@ def is_promotion(source, target):
         if piece.symbol() == 'P' or piece.symbol() == 'p':
             return True
     return False
+
+
+def getRandMove():
+    return random.choice(randMoves)
 
 
 @app.route("/")
@@ -100,7 +112,6 @@ def player_move():
 
 @app.route('/sunfish/<int:num>')
 def sunfish(num):
-
     print(s.board.fen())
     s.board = s.board.mirror()
     print(s.board.fen())
@@ -130,13 +141,14 @@ def sunfish(num):
                     if s.board.is_checkmate() or s.board.is_insufficient_material() or s.board.is_stalemate():
                         break
                     if isAlphaBeta:
-                        st = time.time()
+
                         try:
-                            score, move = minimax_ab(3, -INF, INF, False)
+                            st = time.time()
+                            score, move = minimax_ab(MIN_MAX_DEPTH, -INF, INF, False)
+                            en = time.time()
                             print(f"minmax {move}")
                             s.board.push(move)
                             print(s.board.fen())
-                            # sunfish_process.communicate(input=move.uci().encode('utf-8'))
 
                             sunfish_process.stdin.write(f"{move.uci()}\n".encode('utf-8'))
                             if sunfish_process.poll() is not None:
@@ -144,17 +156,18 @@ def sunfish(num):
                             sunfish_process.stdin.flush()
 
                         except:
+                            st = 0
+                            en = 0
                             traceback.print_exc()
-                        en = time.time()
                         diff = round((en - st) * 1000)  # Milliseconds
                     else:
-                        st = time.time()
                         try:
-                            score, move = minimax(3, False)
+                            st = time.time()
+                            score, move = minimax(MIN_MAX_DEPTH, False)
+                            en = time.time()
                             print(f"minmax {move}")
                             s.board.push(move)
                             print(s.board.fen())
-                            # sunfish_process.communicate(input=move.uci().encode('utf-8'))
 
                             sunfish_process.stdin.write(f"{move.uci()}\n".encode('utf-8'))
                             if sunfish_process.poll() is not None:
@@ -162,8 +175,9 @@ def sunfish(num):
                             sunfish_process.stdin.flush()
 
                         except:
+                            st = 0
+                            en = 0
                             traceback.print_exc()
-                        en = time.time()
                         diff = round((en - st) * 1000)  # Milliseconds
                     fTime.write(f"Diff : {diff} ms\n")
                 except Exception as err:
@@ -183,9 +197,9 @@ def sunfish(num):
         print(s.board.fen())
 
         if res == '1-0':
-            player_sunfish = player_sunfish+1
+            player_sunfish = player_sunfish + 1
         elif res == '0-1':
-            player_minmax = player_minmax+1
+            player_minmax = player_minmax + 1
         elif res == '1/2-1/2':
             player_sunfish = player_sunfish + 1
             player_minmax = player_minmax + 1
@@ -196,6 +210,129 @@ def sunfish(num):
 
     response = app.response_class(
         response=f"Wins\nSunfish - {player_sunfish} \nMinmax - {player_minmax}",
+        status=200
+    )
+    return response
+
+
+@app.route('/stockfish/<int:num>')
+def stockfish(num):
+    print("Playing against stockfish")
+    player_minmax = 0
+    player_stockfish = 0
+
+    for _ in range(num):
+        stockfish_process = Stockfish('Stockfish/src/stockfish'
+                                      , parameters={
+                                                    "Threads": 4
+                                                    , "Minimum Thinking Time": 30
+                                                    , "Hash": 2048
+                                                    }
+                                      )
+
+        stockfish_process.set_elo_rating(ELO_RATING)
+        stockfish_process.set_depth(10)
+
+        playerMove = getRandMove()
+        print('minmax : ', playerMove)
+
+        s.board.push_san(playerMove)
+
+        while not s.board.is_game_over():
+            stockfish_process.set_fen_position(s.board.fen())
+            stockfish_move = stockfish_process.get_best_move()
+
+            print('stockfishMove : ', stockfish_move)
+
+            source = chess.parse_square(stockfish_move[:2])
+            target = chess.parse_square(stockfish_move[2:4])
+
+            if len(stockfish_move) > 4:
+                pr = stockfish_move[-1]
+            else:
+                pr = None
+
+            promotion = True if is_promotion(source, target) is True else False
+
+            try:
+                if promotion:
+                    if pr == 'q':
+                        pr = chess.QUEEN
+                    elif pr == 'r':
+                        pr = chess.ROOK
+                    elif pr == 'b':
+                        pr = chess.BISHOP
+                    elif pr == 'n':
+                        pr = chess.KNIGHT
+                    else:
+                        pr = None
+                    playerMove = s.board.san(chess.Move(source, target, promotion=pr))
+                else:
+                    playerMove = s.board.san(chess.Move(source, target))
+            except Exception as err:
+                print(f"{err}")
+                playerMove = None
+
+            if playerMove is not None and playerMove != "":
+                try:
+                    s.board.push_san(playerMove)
+
+                    if s.board.is_checkmate() or s.board.is_insufficient_material() or s.board.is_stalemate():
+                        break
+                    if isAlphaBeta:
+                        try:
+                            st = time.time()
+                            score, move = minimax_ab(MIN_MAX_DEPTH, -INF, INF, False)
+                            en = time.time()
+                            print(f"minmax {move}")
+
+                            s.board.push(move)
+                        except Exception as err:
+                            print(f"{err}")
+                            st = 0
+                            en = 0
+                            traceback.print_exc()
+
+                        diff = round((en - st) * 1000)  # Milliseconds
+                    else:
+                        try:
+                            st = time.time()
+                            score, move = minimax(MIN_MAX_DEPTH, False)
+                            en = time.time()
+                            print(f"minmax {move}")
+
+                            s.board.push(move)
+                        except Exception as err:
+                            print(f"{err}")
+                            st = 0
+                            en = 0
+                            traceback.print_exc()
+
+                        diff = round((en - st) * 1000)  # Milliseconds
+                    fTime.write(f"Diff : {diff} ms\n")
+                except Exception as err:
+                    print(f"{err}")
+            else:
+                break
+
+        print("GAME OVER")
+        print(s.board.fen())
+        fTime.write(f"totalMoves : {s.board.fen()[-2:]}\n")
+
+        res = s.board.result()
+
+        if res == '1-0':
+            player_minmax = player_minmax + 1
+        elif res == '0-1':
+            player_stockfish = player_stockfish + 1
+        elif res == '1/2-1/2':
+            player_stockfish = player_stockfish + 1
+            player_minmax = player_minmax + 1
+
+        s.board.reset()
+
+    response = app.response_class(
+        response=f"Stockfish - {player_stockfish} \nMinmax - {player_minmax}",
         status=200
     )
     return response
@@ -286,11 +423,10 @@ def minimax_ab(depth, alpha, beta, isMaximizingPlayer):
 
 # Write for Minimax algorithm
 def computer_move():
-    diff = 0
     if isAlphaBeta:
         st = time.time()
         try:
-            score, move = minimax_ab(3, -INF, INF, False)
+            score, move = minimax_ab(MIN_MAX_DEPTH, -INF, INF, False)
             print(f"-->{move}")
             s.board.push(move)
         except:
@@ -300,7 +436,7 @@ def computer_move():
     else:
         st = time.time()
         try:
-            score, move = minimax(3, False)
+            score, move = minimax(MIN_MAX_DEPTH, False)
             print(f"-->{move}")
             s.board.push(move)
         except:
